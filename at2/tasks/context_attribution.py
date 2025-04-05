@@ -20,7 +20,7 @@ class SimpleContextAttributionTask(ContextAttributionTask):
         tokenizer: Any,
         generate_kwargs: Dict[str, Any] = DEFAULT_GENERATE_KWARGS,
         previous_messages: Optional[List[Dict[str, str]]] = None,
-        source_type: str = "sentence",
+        source_type: str = "token",
         cache: Optional[Dict[str, Any]] = None,
         **kwargs: Dict[str, Any],
     ):

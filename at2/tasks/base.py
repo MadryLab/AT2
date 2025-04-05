@@ -120,12 +120,10 @@ class AttributionTask(ABC):
             "hidden_states": hidden_states,
         }
 
-    def get_hidden_states(self, mask=None):
+    def get_hidden_states(self):
+        batch = self.get_tokens(return_tensors="pt").to(self.model.device)
         with ch.no_grad():
-            _, input_tokens = self.get_input_text_and_tokens(
-                return_tensors="pt", mask=mask
-            )
-            output = self.model(**input_tokens.to(self.model.device))
+            output = self.model(**batch, output_hidden_states=True)
         hidden_states = [
             output.hidden_states[layer][:, :-1]
             for layer in range(len(output.hidden_states))
@@ -134,24 +132,22 @@ class AttributionTask(ABC):
 
     @classmethod
     def batch_generate(cls, tasks: List["AttributionTask"]):
-        # TODO: Output hidden states
-        model_manager = tasks[0].model_manager
+        model = tasks[0].model
+        tokenizer = tasks[0].tokenizer
         inputs_texts = []
         inputs_tokens = []
         for task in tasks:
             input_text, input_tokens = task.get_input_text_and_tokens()
             inputs_texts.append(input_text)
             inputs_tokens.append(input_tokens)
-        collator = DataCollatorForSeq2Seq(
-            tokenizer=model_manager.tokenizer, padding="longest"
-        )
-        batch = collator(inputs_tokens).to(model_manager.model.device)
-        output_ids = model_manager.model.generate(
+        collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, padding="longest")
+        batch = collator(inputs_tokens).to(model.device)
+        output_ids = model.generate(
             **batch,
             **tasks[0].generate_kwargs,
         )
         eos_token_ids = ch.tensor(
-            model_manager.model.generation_config.eos_token_id,
+            model.generation_config.eos_token_id,
             device=output_ids.device,
         )
         generations = []
@@ -170,11 +166,9 @@ class AttributionTask(ABC):
                 else output_ids.shape[1]
             )
             cur_output_ids = output_ids[example_index][start_index:end_index]
-            raw_text = model_manager.tokenizer.decode(cur_output_ids)
+            raw_text = tokenizer.decode(cur_output_ids)
             input_length = len(
-                model_manager.tokenizer.decode(
-                    inputs_tokens[example_index]["input_ids"]
-                )
+                tokenizer.decode(inputs_tokens[example_index]["input_ids"])
             )
             generation = raw_text[input_length:]
             generations.append(generation)
@@ -343,17 +337,22 @@ class AttributionTask(ABC):
         tokens = self.get_tokens()
         return tokens["input_ids"][target_token_start:target_token_end]
 
-    @property
-    def target_logits(self):
-        if self._cache.get("target_logits") is None:
-            batch = self.get_tokens(return_tensors="pt").to(self.model.device)
-            with ch.no_grad():
-                output = self.model(**batch)
-            token_start, token_end = self.target_token_range
-            self._cache["target_logits"] = output.logits[
-                :, token_start - 1 : token_end - 1
-            ]
-        return self._cache["target_logits"]
+    def get_target_with_indices(self, split_by: str = "sentence", color: bool = True):
+        parts, separators, start_indices = split_text(self.target, split_by)
+        formatted_words = []
+
+        if color:
+            RED = "\033[36m"
+            RESET = "\033[0m"
+        else:
+            RED = ""
+            RESET = ""
+
+        for word, idx in zip(parts, start_indices):
+            formatted_words.append(f"{RED}[{idx}]{RESET}{word}")
+
+        result = "".join(sep + word for sep, word in zip(separators, formatted_words))
+        return result
 
     def target_range_to_token_range(
         self, start_index=None, end_index=None, relative=False
@@ -409,13 +408,14 @@ class AttributionTask(ABC):
         labels = batch["labels"][:, target_token_start:target_token_end]
         return compute_logit_probs(logits, labels)
 
-    def get_masks_and_outputs(
+    def get_masks_and_logit_probs(
         self,
         num_masks,
         alpha,
         batch_size,
         base_seed=0,
         ablation_method="mask",
+        verbose=False,
     ):
         masks, dataset = self.create_ablation_dataset(
             num_masks,
@@ -430,7 +430,7 @@ class AttributionTask(ABC):
         )
 
         start_index = 0
-        for batch in tqdm(loader):
+        for batch in tqdm(loader, disable=not verbose):
             batch = {key: value.to(self.model.device) for key, value in batch.items()}
             cur_logit_probs = self.get_target_logit_probs(batch)
             cur_batch_size, _ = batch["input_ids"].shape

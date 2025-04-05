@@ -5,7 +5,9 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, Union
 
 
-class ScoreEstimationModel(nn.Module, ABC):
+class ScoreEstimator(nn.Module, ABC):
+    """A learnable estimator of attribution scores."""
+
     def __init__(self, **kwargs: Dict[str, Any]):
         super().__init__()
         self.kwargs = kwargs
@@ -37,21 +39,21 @@ class ScoreEstimationModel(nn.Module, ABC):
 
     @classmethod
     def load(cls, path: Path, device: Optional[Union[str, ch.device]] = None):
-        """Load a model from the specified path."""
+        """Load a estimator from the specified path."""
         save_dict = ch.load(path, map_location=device, weights_only=False)
         class_name = save_dict["class"]
         state_dict = save_dict["state_dict"]
         kwargs = save_dict["kwargs"]
         extras = save_dict["extras"]
-        model_class = cls._registry.get(class_name)
-        if model_class is None:
-            raise ValueError(f"Unknown model class: {class_name}")
-        model = model_class(**kwargs, extras=extras)
-        model.load_state_dict(state_dict)
-        return model
+        estimator_class = cls._registry.get(class_name)
+        if estimator_class is None:
+            raise ValueError(f"Unknown estimator class: {class_name}")
+        estimator = estimator_class(**kwargs, extras=extras)
+        estimator.load_state_dict(state_dict)
+        return estimator
 
 
-class LinearScoreEstimationModel(ScoreEstimationModel):
+class LinearScoreEstimator(ScoreEstimator):
     def __init__(
         self,
         num_features: int,

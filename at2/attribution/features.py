@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Dict, Optional, Union
+from pathlib import Path
 import torch as ch
 
 from .attention import get_attention_weights, get_attentions_shape
@@ -7,6 +8,15 @@ from ..tasks import AttributionTask
 
 
 class FeatureExtractor(ABC):
+    def __init__(self, **kwargs: Dict[str, Any]):
+        self.kwargs = kwargs
+
+    _registry = {}
+
+    def __init_subclass__(cls, **kwargs: Dict[str, Any]):
+        super().__init_subclass__(**kwargs)
+        cls._registry[cls.__name__] = cls
+
     @property
     @abstractmethod
     def num_features(self) -> int:
@@ -18,10 +28,43 @@ class FeatureExtractor(ABC):
     ) -> ch.Tensor:
         """Extract features from the task."""
 
+    def save(self, path: Path):
+        """Save the model to the specified path."""
+        save_dict = {
+            "class": self.__class__.__name__,
+            "kwargs": self.kwargs,
+        }
+        path.parent.mkdir(parents=True, exist_ok=True)
+        ch.save(save_dict, path)
+
+    @classmethod
+    def load(cls, path: Path):
+        """Load a model from the specified path."""
+        save_dict = ch.load(path, weights_only=False)
+        class_name = save_dict["class"]
+        kwargs = save_dict["kwargs"]
+        feature_extractor_class = cls._registry.get(class_name)
+        if feature_extractor_class is None:
+            raise ValueError(f"Unknown feature extractor class: {class_name}")
+        feature_extractor = feature_extractor_class(**kwargs)
+        return feature_extractor
+
 
 class AttentionFeatureExtractor(FeatureExtractor):
-    def __init__(self, model: Any):
-        self.num_layers, self.num_heads = get_attentions_shape(model)
+    def __init__(
+        self, num_layers: int, num_heads: int, model_type: Optional[str] = None
+    ):
+        super().__init__(
+            num_layers=num_layers, num_heads=num_heads, model_type=model_type
+        )
+        self.num_layers = num_layers
+        self.num_heads = num_heads
+        self.model_type = model_type
+
+    @classmethod
+    def from_model(cls, model: Any) -> "AttentionFeatureExtractor":
+        num_layers, num_heads = get_attentions_shape(model)
+        return cls(num_layers, num_heads)
 
     @property
     def num_features(self) -> int:
@@ -36,6 +79,7 @@ class AttentionFeatureExtractor(FeatureExtractor):
             task.hidden_states,
             attribution_start=attribution_start,
             attribution_end=attribution_end,
+            model_type=self.model_type,
         )
         # (num_target_tokens, num_tokens, num_layers, num_heads)
         weights = weights.permute(2, 3, 0, 1)

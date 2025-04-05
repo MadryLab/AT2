@@ -15,8 +15,8 @@ from ..utils import (
     create_registry,
 )
 from .utils import aggregate_logit_probs
-from .models import LinearScoreEstimationModel
-from .features import FeatureExtractor
+from .score_estimators import LinearScoreEstimator
+from .features import FeatureExtractor, AttentionFeatureExtractor
 
 
 class PearsonCorrelationLoss(ch.nn.Module):
@@ -45,27 +45,35 @@ class PearsonCorrelationLoss(ch.nn.Module):
             raise ValueError(f"Unknown reduction: {self.reduction}")
 
 
-class LinearTrainer:
+class LinearScoreEstimatorTrainer:
     def __init__(
         self,
         save_path: Path,
-        generations_save_path: Path,
         dataset: Dataset,
         model: Any,
         tokenizer: Any,
-        feature_extractor: FeatureExtractor,
-        make_task_from_example: Callable[[Dict[str, Any], Any, Any], AttributionTask],
+        task_from_example: Callable[[Dict[str, Any], Any, Any], AttributionTask],
+        feature_extractor: Optional[FeatureExtractor] = None,
         split_target_by: Optional[str] = "sentence",
         num_masks: int = 32,
+        generations_save_path: Optional[Path] = None,
     ):
         self.save_path = Path(save_path)
         self.save_path.mkdir(parents=True, exist_ok=True)
-        self.generations_save_path = Path(generations_save_path)
+        self.generations_save_path = (
+            self.save_path / "generations"
+            if generations_save_path is None
+            else generations_save_path
+        )
         self.dataset = dataset
         self.model = model
         self.tokenizer = tokenizer
-        self.feature_extractor = feature_extractor
-        self.make_task_from_example = make_task_from_example
+        self.feature_extractor = (
+            AttentionFeatureExtractor.from_model(model)
+            if feature_extractor is None
+            else feature_extractor
+        )
+        self.task_from_example = task_from_example
         self.num_masks = num_masks
         self.split_target_by = split_target_by
         self._generations = None
@@ -75,7 +83,7 @@ class LinearTrainer:
 
     def get_task(self, i: int, load_generation: bool = True):
         example = self.dataset[i]
-        task = self.make_task_from_example(example, self.model, self.tokenizer)
+        task = self.task_from_example(example, self.model, self.tokenizer)
         if load_generation:
             task.set_generation(self.generations[i])
         return task
@@ -83,7 +91,7 @@ class LinearTrainer:
     def load_multiple_jsons(self, path: Path, require_complete=True):
         data = {}
         num_files = len(list(path.iterdir()))
-        for i in tqdm(range(num_files)):
+        for i in range(num_files):
             file_path = path / f"{i}_of_{num_files}.json"
             with open(file_path, "r") as f:
                 cur_data = json.load(f)
@@ -138,7 +146,9 @@ class LinearTrainer:
             self.task_datas_save_path
         )
         start, end = get_job_start_and_end(len(self.dataset), job_index, num_jobs)
-        for cur_start in tqdm(range(start, end, batch_size)):
+        for cur_start in tqdm(
+            range(start, end, batch_size), desc="Generating completions"
+        ):
             cur_end = min(cur_start + batch_size, end)
             cur_indices = range(cur_start, cur_end)
             generations_incomplete = any(
@@ -247,8 +257,7 @@ class LinearTrainer:
         assert self.task_datas[i]["num_targets"] == num_targets
 
         # Compute raw features for every source and target
-        model = self.model_manager.model
-        device = model.device
+        device = self.model.device
         target_token_start, target_token_end = task.target_token_range
         masks, logit_probs = task.get_masks_and_logit_probs(
             num_masks=self.num_masks,
@@ -267,14 +276,14 @@ class LinearTrainer:
                 (num_targets, num_tokens, num_features)
             )
             for i, (s, e) in enumerate(target_token_ranges):
-                features_by_target[i, :, :] = features[s:e, :, :].mean(dim=1)
+                features_by_target[i, :, :] = features[s:e, :, :].mean(dim=0)
             del features
         features_by_target_source = features_by_target.new_zeros(
             (num_targets, task.num_sources, num_features),
         )
         for i, (s, e) in enumerate(task.source_token_ranges):
             features_by_target_source[:, i, :] = features_by_target[:, s:e, :].sum(
-                dim=-1
+                dim=1
             )
         del features_by_target
 
@@ -300,7 +309,7 @@ class LinearTrainer:
             job_index, num_jobs
         )
         start, end = get_job_start_and_end(len(self.task_datas), job_index, num_jobs)
-        for i in tqdm(range(start, end)):
+        for i in tqdm(range(start, end), desc="Computing features and outputs"):
             store_i = i - start
             example_start = example_starts[store_i]
             task_data = self.task_datas[i]
@@ -396,7 +405,7 @@ class LinearTrainer:
 
     def train(
         self,
-        model: Optional[LinearScoreEstimationModel] = None,
+        score_estimator: Optional[LinearScoreEstimator] = None,
         num_iterations: int = 1_000,
         learning_rate: float = 1e-3,
         batch_size: int = 512,
@@ -425,16 +434,16 @@ class LinearTrainer:
         for i in train_indices:
             for target_index in range(self.task_datas[i]["num_targets"]):
                 train_instances.append((i, target_index))
-        if model is None:
-            model = LinearScoreEstimationModel(self.num_features).to(device)
+        if score_estimator is None:
+            score_estimator = LinearScoreEstimator(self.num_features).to(device)
         else:
-            model = model.to(device)
-        optimizer = ch.optim.Adam(model.parameters(), lr=learning_rate)
+            score_estimator = score_estimator.to(device)
+        optimizer = ch.optim.Adam(score_estimator.parameters(), lr=learning_rate)
         scheduler = ch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer, T_max=num_iterations
         )
         cur_losses = []
-        for step in tqdm(range(num_iterations)):
+        for step in tqdm(range(num_iterations), desc="Training score estimator"):
             batch_features, batch_outputs = self.sample_batch(
                 batch_size,
                 train_indices,
@@ -444,22 +453,25 @@ class LinearTrainer:
                 dtype=dtype,
             )
             optimizer.zero_grad()
-            predictions = model(batch_features)[:, :, 0]
+            predictions = score_estimator(batch_features)[:, :, 0]
             loss = loss_fn(predictions, batch_outputs)
             loss.backward()
-            ch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=max_grad_norm)
+            ch.nn.utils.clip_grad_norm_(
+                score_estimator.parameters(), max_norm=max_grad_norm
+            )
             optimizer.step()
             scheduler.step()
             cur_losses.append(loss.item())
             if step == 0 or (step + 1) % print_every == 0:
                 mean_loss = np.mean(cur_losses)
-                print(
-                    f"Step {step}: loss={mean_loss:.4g}"
-                )
+                print(f"Step {step}: loss={mean_loss:.4g}")
                 cur_losses = []
-            model.project_parameters()
-        model.finalize_parameters()
+            score_estimator.project_parameters()
+        score_estimator.finalize_parameters()
         if save_name is not None:
-            save_path = self.save_path / "models" / f"{save_name}.pt"
-            model.save(save_path)
-        return model
+            save_path = self.save_path / "estimators" / f"{save_name}"
+            save_path.mkdir(parents=True, exist_ok=True)
+            score_estimator.save(save_path / "score_estimator.pt")
+            self.feature_extractor.save(save_path / "feature_extractor.pt")
+            print(f"Saved estimator to {save_path}")
+        return score_estimator

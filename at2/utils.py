@@ -1,12 +1,34 @@
 import string
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Any, Dict
 from pathlib import Path
 import nltk
 import numpy as np
+import torch as ch
 from spacy.lang.en import English
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 nltk.download("punkt_tab")
+
+
+def get_model_and_tokenizer(
+    model_name: str,
+    dtype: ch.dtype = ch.bfloat16,
+    attn_implementation: str = "flash_attention_2",
+) -> Tuple[Any, Any]:
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name,
+        torch_dtype=dtype,
+        attn_implementation=attn_implementation,
+        device_map="auto",
+        trust_remote_code=True,
+    )
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_name, padding_side="left", trust_remote_code=True
+    )
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    return model, tokenizer
 
 
 def is_sentence(s):
@@ -81,4 +103,3 @@ def create_registry(size: int, num_jobs: Optional[int] = None):
             jobs[start:end] = job_index
             job_starts[job_index] = start
     return jobs, job_starts
-
