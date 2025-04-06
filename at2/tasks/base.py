@@ -337,22 +337,18 @@ class AttributionTask(ABC):
         tokens = self.get_tokens()
         return tokens["input_ids"][target_token_start:target_token_end]
 
-    def get_target_with_indices(self, split_by: str = "sentence", color: bool = True):
+    def show_target_with_indices(self, split_by: str = "sentence"):
         parts, separators, start_indices = split_text(self.target, split_by)
         formatted_words = []
 
-        if color:
-            RED = "\033[36m"
-            RESET = "\033[0m"
-        else:
-            RED = ""
-            RESET = ""
+        RED = "\033[36m"
+        RESET = "\033[0m"
 
         for word, idx in zip(parts, start_indices):
             formatted_words.append(f"{RED}[{idx}]{RESET}{word}")
 
         result = "".join(sep + word for sep, word in zip(separators, formatted_words))
-        return result
+        print(result)
 
     def target_range_to_token_range(
         self, start_index=None, end_index=None, relative=False

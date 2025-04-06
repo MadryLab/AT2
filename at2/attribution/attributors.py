@@ -5,9 +5,9 @@ import numpy as np
 import pandas as pd
 import torch as ch
 
+
 from ..tasks import AttributionTask
 from .score_estimators import LinearScoreEstimator
-from .features import FeatureExtractor
 
 
 DEFAULT_NUM_SOURCES_TO_SHOW = 8
@@ -46,7 +46,7 @@ class Attributor(ABC):
             attributed = self.task.tokenizer.decode(
                 self.task.target_ids[token_start:token_end]
             )
-            print("Computing attribution scores for:\n", attributed)
+            print("Computing attribution scores for:\n", attributed.strip())
             if selected.strip() not in attributed.strip():
                 print(
                     f'Warning: selected text "{selected.strip()}" not in attributed text "{attributed.strip()}"'
@@ -138,7 +138,6 @@ class ScoreEstimationAttributor(Attributor):
     def __init__(
         self,
         task: AttributionTask,
-        feature_extractor: FeatureExtractor,
         score_estimator: LinearScoreEstimator,
         cache: Optional[Dict[str, Any]] = None,
     ):
@@ -146,21 +145,25 @@ class ScoreEstimationAttributor(Attributor):
             task,
             cache=cache,
         )
-        self.feature_extractor = feature_extractor
         self.score_estimator = score_estimator
         self.score_estimator = self.score_estimator.to(self.task.model.device)
         self.score_estimator = self.score_estimator.to(self.task.model.dtype)
 
     @classmethod
     def from_path(cls, task: AttributionTask, path: Path):
-        feature_extractor = FeatureExtractor.load(path / "feature_extractor.pt")
         score_estimator = LinearScoreEstimator.load(path / "score_estimator.pt")
-        return cls(task, feature_extractor, score_estimator)
+        return cls(task, score_estimator)
+
+    @classmethod
+    def from_hub(cls, task: AttributionTask, model_name: str):
+        score_estimator = LinearScoreEstimator.from_hub(model_name)
+        return cls(task, score_estimator)
 
     def _get_scores(self):
         with ch.no_grad():
-            features = self.feature_extractor(self.task, *self.task.target_token_range)
-            scores = self.score_estimator(features)[:, :, 0]
+            scores = self.score_estimator.get_scores(
+                self.task, *self.task.target_token_range
+            )
         scores = [scores[:, s:e].sum(dim=-1) for s, e in self.task.source_token_ranges]
         scores = ch.stack(scores, dim=0)  # [num_sources x num_target_tokens]
         return scores

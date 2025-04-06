@@ -3,13 +3,17 @@ import torch.nn as nn
 from pathlib import Path
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, Union
+from huggingface_hub import hf_hub_download
 
+from .features import FeatureExtractor
+from ..tasks import AttributionTask
 
 class ScoreEstimator(nn.Module, ABC):
     """A learnable estimator of attribution scores."""
 
-    def __init__(self, **kwargs: Dict[str, Any]):
+    def __init__(self, feature_extractor: FeatureExtractor, **kwargs: Dict[str, Any]):
         super().__init__()
+        self.feature_extractor = feature_extractor
         self.kwargs = kwargs
 
     _registry = {}
@@ -26,11 +30,17 @@ class ScoreEstimator(nn.Module, ABC):
     def finalize_parameters(self):
         """Finalize parameters (applied after training)."""
 
+    def get_scores(self, task: AttributionTask, attribution_start: int, attribution_end: int):
+        """Get scores by extracting features and passing them through the estimator."""
+        features = self.feature_extractor(task, attribution_start, attribution_end)
+        return self.forward(features)[:, :, 0]
+
     def save(self, path: Path, extras: Optional[Dict[str, Any]] = None):
         """Save the model to the specified path."""
         save_dict = {
             "class": self.__class__.__name__,
             "state_dict": self.state_dict(),
+            "feature_extractor": self.feature_extractor.serialize(),
             "kwargs": self.kwargs,
             "extras": extras or {},
         }
@@ -45,30 +55,37 @@ class ScoreEstimator(nn.Module, ABC):
         state_dict = save_dict["state_dict"]
         kwargs = save_dict["kwargs"]
         extras = save_dict["extras"]
+        feature_extractor = FeatureExtractor.deserialize(save_dict["feature_extractor"])
         estimator_class = cls._registry.get(class_name)
         if estimator_class is None:
             raise ValueError(f"Unknown estimator class: {class_name}")
-        estimator = estimator_class(**kwargs, extras=extras)
+        estimator = estimator_class(feature_extractor, **kwargs, extras=extras)
         estimator.load_state_dict(state_dict)
         return estimator
+
+    @classmethod
+    def from_hub(cls, model_name: str, device: Optional[Union[str, ch.device]] = None):
+        path = hf_hub_download(repo_id=model_name, filename="score_estimator.pt")
+        return cls.load(Path(path), device)
 
 
 class LinearScoreEstimator(ScoreEstimator):
     def __init__(
         self,
-        num_features: int,
+        feature_extractor: FeatureExtractor,
         normalize: bool = True,
         non_negative: bool = False,
         bias: bool = False,
         **kwargs: Dict[str, Any],
     ):
         super().__init__(
-            num_features=num_features,
+            feature_extractor,
             normalize=normalize,
             non_negative=non_negative,
             bias=bias,
             **kwargs,
         )
+        num_features = feature_extractor.num_features
         self.linear = nn.Linear(num_features, 1, bias=bias)
         self.linear.weight.data[:] = 1 / num_features
         self.normalize = normalize

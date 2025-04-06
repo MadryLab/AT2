@@ -5,3 +5,5 @@ from .attributors import ScoreEstimationAttributor
 
 AT2Trainer = LinearScoreEstimatorTrainer
 AT2Attributor = ScoreEstimationAttributor
+AT2FeatureExtractor = AttentionFeatureExtractor
+AT2ScoreEstimator = LinearScoreEstimator

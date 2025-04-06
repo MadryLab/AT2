@@ -128,6 +128,14 @@ class LinearScoreEstimatorTrainer:
         return self._task_datas
 
     def generate(self, job_index: int = 0, num_jobs: int = 1, batch_size: int = 4):
+        """Generate completions for a subset of the dataset.
+
+        Args:
+            job_index: The index of the job to generate completions for.
+            num_jobs: The total number of jobs to generate completions for.
+            batch_size: The batch size to use.
+        """
+
         def create_dict_from_json(base_path: Path):
             base_path.mkdir(parents=True, exist_ok=True)
             path = base_path / f"{job_index}_of_{num_jobs}.json"
@@ -305,6 +313,13 @@ class LinearScoreEstimatorTrainer:
         num_jobs: int = 1,
         batch_size: int = 4,
     ):
+        """Compute features and outputs for a subset of the dataset.
+
+        Args:
+            job_index: The index of the job to compute features and outputs for.
+            num_jobs: The total number of jobs to compute features and outputs for.
+            batch_size: The batch size to use.
+        """
         features, outputs, completed, example_starts = self.get_store_for_job(
             job_index, num_jobs
         )
@@ -364,7 +379,7 @@ class LinearScoreEstimatorTrainer:
         features, _ = self.get_features_and_outputs(i)
         return features is not None
 
-    def sample_batch(
+    def _sample_batch(
         self,
         batch_size: int,
         example_indices: List[int],
@@ -418,6 +433,22 @@ class LinearScoreEstimatorTrainer:
         print_every: int = 100,
         save_name: Optional[str] = None,
     ):
+        """Train a score estimator.
+
+        Args:
+            score_estimator: The score estimator to train.
+            num_iterations: The number of iterations to train for.
+            learning_rate: The learning rate to use.
+            batch_size: The batch size to use.
+            loss_fn: The loss function to use (by default, negative Pearson correlation).
+            max_grad_norm: The maximum gradient norm to use for clipping.
+            sampling_method: The sampling method to use (examples or instances).
+            train_indices: The indices of the examples to train on (by default, all examples with completed features and outputs).
+            dtype: The data type to use.
+            device: The device to use.
+            print_every: The number of iterations to print the loss.
+            save_name: The name of the directory to save the score estimator and feature extractor to (relative to the save path).
+        """
         if loss_fn is None:
             loss_fn = PearsonCorrelationLoss()
         if train_indices is None:
@@ -426,6 +457,7 @@ class LinearScoreEstimatorTrainer:
                 for i in range(len(self.dataset))
                 if self.is_features_and_outputs_completed(i)
             ]
+        # Exclude examples without at least one target
         train_indices = [
             i for i in train_indices if self.task_datas[i]["num_targets"] > 0
         ]
@@ -435,7 +467,7 @@ class LinearScoreEstimatorTrainer:
             for target_index in range(self.task_datas[i]["num_targets"]):
                 train_instances.append((i, target_index))
         if score_estimator is None:
-            score_estimator = LinearScoreEstimator(self.num_features).to(device)
+            score_estimator = LinearScoreEstimator(self.feature_extractor).to(device)
         else:
             score_estimator = score_estimator.to(device)
         optimizer = ch.optim.Adam(score_estimator.parameters(), lr=learning_rate)
@@ -444,7 +476,7 @@ class LinearScoreEstimatorTrainer:
         )
         cur_losses = []
         for step in tqdm(range(num_iterations), desc="Training score estimator"):
-            batch_features, batch_outputs = self.sample_batch(
+            batch_features, batch_outputs = self._sample_batch(
                 batch_size,
                 train_indices,
                 train_instances,
@@ -472,6 +504,5 @@ class LinearScoreEstimatorTrainer:
             save_path = self.save_path / "estimators" / f"{save_name}"
             save_path.mkdir(parents=True, exist_ok=True)
             score_estimator.save(save_path / "score_estimator.pt")
-            self.feature_extractor.save(save_path / "feature_extractor.pt")
             print(f"Saved estimator to {save_path}")
         return score_estimator

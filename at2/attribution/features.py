@@ -28,21 +28,19 @@ class FeatureExtractor(ABC):
     ) -> ch.Tensor:
         """Extract features from the task."""
 
-    def save(self, path: Path):
-        """Save the model to the specified path."""
-        save_dict = {
+    def serialize(self):
+        """Serialize the feature extractor."""
+        data = {
             "class": self.__class__.__name__,
             "kwargs": self.kwargs,
         }
-        path.parent.mkdir(parents=True, exist_ok=True)
-        ch.save(save_dict, path)
+        return data
 
     @classmethod
-    def load(cls, path: Path):
-        """Load a model from the specified path."""
-        save_dict = ch.load(path, weights_only=False)
-        class_name = save_dict["class"]
-        kwargs = save_dict["kwargs"]
+    def deserialize(cls, data: Dict[str, Any]):
+        """Deserialize the feature extractor."""
+        class_name = data["class"]
+        kwargs = data["kwargs"]
         feature_extractor_class = cls._registry.get(class_name)
         if feature_extractor_class is None:
             raise ValueError(f"Unknown feature extractor class: {class_name}")
