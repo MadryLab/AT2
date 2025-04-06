@@ -33,7 +33,7 @@ class Attributor(ABC):
         """Get attribution scores for a given token range."""
 
     def get_attribution_scores(
-        self, start=None, end=None, token_start=None, token_end=None, **kwargs
+        self, start=None, end=None, token_start=None, token_end=None, verbose=False, **kwargs
     ):
         if start is not None or end is not None:
             assert token_start is None and token_end is None
@@ -46,7 +46,8 @@ class Attributor(ABC):
             attributed = self.task.tokenizer.decode(
                 self.task.target_ids[token_start:token_end]
             )
-            print("Computing attribution scores for:\n", attributed.strip())
+            if verbose:
+                print("Computing attribution scores for:\n", attributed.strip())
             if selected.strip() not in attributed.strip():
                 print(
                     f'Warning: selected text "{selected.strip()}" not in attributed text "{attributed.strip()}"'
