@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, Union
-from pathlib import Path
+from typing import Any, Dict, Optional
 import torch as ch
 
 from .attention import get_attention_weights, get_attentions_shape
@@ -82,6 +81,6 @@ class AttentionFeatureExtractor(FeatureExtractor):
         # (num_target_tokens, num_tokens, num_layers, num_heads)
         weights = weights.permute(2, 3, 0, 1)
         num_target_tokens, num_tokens, _, _ = weights.shape
-        # (num_target_tokens, num_tokens, num_layers * num_heads)
-        weights = weights.view(num_target_tokens, num_tokens, -1)
+        # (num_target_tokens, num_tokens, num_features)
+        weights = weights.view(num_target_tokens, num_tokens, self.num_features)
         return weights

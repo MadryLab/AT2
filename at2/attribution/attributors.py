@@ -108,7 +108,7 @@ class Attributor(ABC):
             max_score = np.abs(source_scores).max() + 1e-6
         source_scores = source_scores / max_score
 
-        tokens = self.task.get_input_tokens()
+        tokens = self.task.get_tokens()
         token_scores = np.zeros((len(tokens["input_ids"]),))
         for i, (source_token_start, source_token_end) in enumerate(
             self.task.source_token_ranges

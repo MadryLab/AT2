@@ -5,7 +5,7 @@ import nltk
 import numpy as np
 import torch as ch
 from spacy.lang.en import English
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoModelForImageTextToText
 
 
 nltk.download("punkt_tab")
@@ -14,15 +14,28 @@ nltk.download("punkt_tab")
 def get_model_and_tokenizer(
     model_name: str,
     dtype: ch.dtype = ch.bfloat16,
-    attn_implementation: str = "flash_attention_2",
+    attn_implementation: Optional[str] = None,
+    is_multimodal: bool = False,
 ) -> Tuple[Any, Any]:
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        torch_dtype=dtype,
-        attn_implementation=attn_implementation,
-        device_map="auto",
-        trust_remote_code=True,
-    )
+    if is_multimodal:
+        model = AutoModelForImageTextToText.from_pretrained(
+            model_name,
+            torch_dtype=dtype,
+            attn_implementation=attn_implementation,
+            device_map="auto",
+            trust_remote_code=True,
+        )
+        model.language_model.name_or_path = model.name_or_path
+        model.language_model.generation_config = model.generation_config
+        model = model.language_model
+    else:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            torch_dtype=dtype,
+            attn_implementation=attn_implementation,
+            device_map="auto",
+            trust_remote_code=True,
+        )
     tokenizer = AutoTokenizer.from_pretrained(
         model_name, padding_side="left", trust_remote_code=True
     )
