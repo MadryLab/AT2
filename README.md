@@ -93,8 +93,6 @@ Attention mechanisms have become an integral part of compelling sequence modelin
 In this work we propose the Transformer, a model architecture eschewing recurrence and instead relying entirely on an attention mechanism to draw global dependencies between input and output. The Transformer allows for significantly more parallelization and can reach a new state of the art in translation quality after being trained for as little as twelve hours on eight P100 GPUs.
 """
 query = "What type of GPUs did the authors use in this paper?"
-context = ... # Your context here!
-query = ... # Your query here!
 task = SimpleContextAttributionTask(
     context=context,
     query=query,
@@ -104,9 +102,11 @@ task = SimpleContextAttributionTask(
 )
 ```
 
+The `task` object we've created handles generating a response from the context and query for us:
+
 ```python
 In [1]: task.generation
-Out[1]: TODO
+Out[1]: The authors used P100 GPUs in this paper.
 ```
 
 Finally, we can create an `AT2Attributor` (in this case, using an existing learned score estimator from [HuggingFace](https://huggingface.co/collections/madrylab/at2-67f28846e63e1832cb208427)), and attribute the model's generation!
@@ -117,8 +117,10 @@ attributor = AT2Attributor.from_hub(task, "madrylab/at2-phi-4-mini-instruct")
 
 ```python
 In [2]: attributor.show_attribution()
-Out[2]: TODO
+Out[2]:
 ```
+
+<img alt="Example attribution" src='assets/getting_started_output.png' width='100%'/>
 
 
 ## Tutorials
@@ -131,15 +133,15 @@ AT2 *learns* to attribute a particular model's generation to preceding tokens.
 - [**Multi-document context attribution**](https://github.com/MadryLab/AT2/blob/main/notebooks/multi_document_context_attribution.ipynb): We construct a custom attribution task with sources across multiple documents.
 - [**Thought attribution**](https://github.com/MadryLab/AT2/blob/main/notebooks/thought_attribution.ipynb): We attribute a reasoning model's final response to its intermediate thoughts.
 
-## Building a citation tool with AT2
-
-In our previous work, we explored *context attribution*: the specific task of attributing a model's generation to a provided context.
-These attributions can be interpreted as *citations* for a generated statement (see [ContextCite](https://github.com/MadryLab/context-cite)).
-
 ## Learned score estimators 🤗
 
 We provide learned score estimators for a few popular models in [this HuggingFace collection](https://huggingface.co/collections/madrylab/at2-67f28846e63e1832cb208427).
 These estimators were trained using the training scripts in `scripts`.
+
+## Building a citation tool with AT2
+
+In our previous work, we explored *context attribution*: the specific task of attributing a model's generation to a provided context.
+These attributions can be interpreted as *citations* for a generated statement (see [ContextCite](https://github.com/MadryLab/context-cite)).
 
 ## Citation
 ```bib
