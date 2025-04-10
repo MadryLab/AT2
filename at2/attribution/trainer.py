@@ -1,3 +1,8 @@
+"""
+The trainer is responsible for training a score estimator.
+This implementation can only train linear score estimators.
+"""
+
 import json
 import numpy as np
 import torch as ch
@@ -20,6 +25,8 @@ from .features import FeatureExtractor, AttentionFeatureExtractor
 
 
 class PearsonCorrelationLoss(ch.nn.Module):
+    """A PyTorch loss function for the negative Pearson correlation."""
+
     def __init__(self, reduction: str = "mean"):
         super(PearsonCorrelationLoss, self).__init__()
         self.reduction = reduction
@@ -58,6 +65,19 @@ class LinearScoreEstimatorTrainer:
         num_masks: int = 32,
         generations_save_path: Optional[Path] = None,
     ):
+        """Create a score estimator trainer.
+
+        Args:
+            save_path: The path to save the trainer to.
+            dataset: The dataset to train on.
+            model: The model to train a score estimator for.
+            tokenizer: The tokenizer to train a score estimator for.
+            task_from_example: A function that creates an attribution task from an example of the dataset.
+            feature_extractor: The feature extractor to use.
+            split_target_by: The unit of the generation to attribute.
+            num_masks: The number of masks to use for each example.
+            generations_save_path: The path to save the generations to.
+        """
         self.save_path = Path(save_path)
         self.save_path.mkdir(parents=True, exist_ok=True)
         self.generations_save_path = (

@@ -1,3 +1,8 @@
+"""
+Score estimators are learnable models that predict the attribution score for a given source.
+In the case of AT2, the features are the attention weights of the generated sequence to the source tokens.
+"""
+
 import torch as ch
 import torch.nn as nn
 from pathlib import Path
@@ -8,10 +13,12 @@ from huggingface_hub import hf_hub_download
 from .features import FeatureExtractor
 from ..tasks import AttributionTask
 
+
 class ScoreEstimator(nn.Module, ABC):
     """A learnable estimator of attribution scores."""
 
     def __init__(self, feature_extractor: FeatureExtractor, **kwargs: Dict[str, Any]):
+        """Create a score estimator using the provided feature extractor."""
         super().__init__()
         self.feature_extractor = feature_extractor
         self.kwargs = kwargs
@@ -30,7 +37,9 @@ class ScoreEstimator(nn.Module, ABC):
     def finalize_parameters(self):
         """Finalize parameters (applied after training)."""
 
-    def get_scores(self, task: AttributionTask, attribution_start: int, attribution_end: int):
+    def get_scores(
+        self, task: AttributionTask, attribution_start: int, attribution_end: int
+    ):
         """Get scores by extracting features and passing them through the estimator."""
         features = self.feature_extractor(task, attribution_start, attribution_end)
         return self.forward(features)[:, :, 0]
@@ -65,11 +74,14 @@ class ScoreEstimator(nn.Module, ABC):
 
     @classmethod
     def from_hub(cls, model_name: str, device: Optional[Union[str, ch.device]] = None):
+        """Load a score estimator from the specified model name on HuggingFace."""
         path = hf_hub_download(repo_id=model_name, filename="score_estimator.pt")
         return cls.load(Path(path), device)
 
 
 class LinearScoreEstimator(ScoreEstimator):
+    """A score estimator that predicts scores as a linear function of the features."""
+
     def __init__(
         self,
         feature_extractor: FeatureExtractor,
@@ -78,6 +90,14 @@ class LinearScoreEstimator(ScoreEstimator):
         bias: bool = False,
         **kwargs: Dict[str, Any],
     ):
+        """Create a linear score estimator using the provided feature extractor.
+
+        Args:
+            feature_extractor: The feature extractor to use.
+            normalize: Whether to L1-normalize the weights (applied after training).
+            non_negative: Whether to ensure the weights are non-negative (applied at every training step).
+            bias: Whether to include a bias term.
+        """
         super().__init__(
             feature_extractor,
             normalize=normalize,

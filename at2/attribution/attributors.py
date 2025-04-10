@@ -1,3 +1,8 @@
+"""
+Attributors perform attribution for a given task.
+AT2 uses a score estimator to perform attribution.
+"""
+
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -35,6 +40,17 @@ class Attributor(ABC):
     def get_attribution_scores(
         self, start=None, end=None, token_start=None, token_end=None, verbose=False, **kwargs
     ):
+        """Get attribution scores for a given target range.
+        The target range can be specified in terms of characters (`start` and `end`) or tokens (`token_start` and `token_end`).
+
+        Args:
+            start: The start index of the target range relative to the target text (in characters).
+            end: The end index of the target range relative to the target text (in characters).
+            token_start: The start token index of the target range relative to the target text (in tokens).
+            token_end: The end token index of the target range relative to the target text (in tokens).
+            verbose: Whether to display the attribution text.
+        """
+
         if start is not None or end is not None:
             assert token_start is None and token_end is None
             if self.task.num_sources == 0:
@@ -68,6 +84,8 @@ class Attributor(ABC):
         cmap="RdBu",
         **kwargs,
     ):
+        """Show the attribution scores in a styled dataframe."""
+
         scores = self.get_attribution_scores(
             start=start, end=end, token_start=token_start, token_end=token_end, **kwargs
         )
@@ -93,6 +111,8 @@ class Attributor(ABC):
         token_end=None,
         max_score=None,
     ):
+        """Highlight the attribution scores in the task text."""
+
         if token_start is None or token_end is None:
             token_start, token_end = self.task.target_range_to_token_range(
                 start, end, relative=True

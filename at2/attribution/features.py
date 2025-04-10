@@ -1,3 +1,8 @@
+"""
+Feature extractors produce features relevant for attribution (estimating the influence of a source on a model's generation).
+In the case of AT2, the features are the attention weights of the generated sequence to the source tokens.
+"""
+
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 import torch as ch
@@ -7,6 +12,8 @@ from ..tasks import AttributionTask
 
 
 class FeatureExtractor(ABC):
+    """A feature extractor that produces features relevant for attribution."""
+
     def __init__(self, **kwargs: Dict[str, Any]):
         self.kwargs = kwargs
 
@@ -51,6 +58,13 @@ class AttentionFeatureExtractor(FeatureExtractor):
     def __init__(
         self, num_layers: int, num_heads: int, model_type: Optional[str] = None
     ):
+        """Create an attention feature extractor.
+
+        Args:
+            num_layers: The number of layers in the model.
+            num_heads: The number of heads in the model.
+            model_type: The type of model (used by `get_attention_weights`).
+        """
         super().__init__(
             num_layers=num_layers, num_heads=num_heads, model_type=model_type
         )
@@ -60,6 +74,7 @@ class AttentionFeatureExtractor(FeatureExtractor):
 
     @classmethod
     def from_model(cls, model: Any) -> "AttentionFeatureExtractor":
+        """Create an attention feature extractor from a model."""
         num_layers, num_heads = get_attentions_shape(model)
         return cls(num_layers, num_heads)
 
@@ -70,6 +85,10 @@ class AttentionFeatureExtractor(FeatureExtractor):
     def __call__(
         self, task: AttributionTask, attribution_start: int, attribution_end: int
     ) -> ch.Tensor:
+        """Extract attention weights from the task as features for attribution."""
+        # This computes attention weights from hidden states only for the specified
+        # attribution range (this is more efficient than computing the entire attention
+        # matrix using the transformers implementation).
         # (num_layers, num_heads, num_target_tokens, num_tokens)
         weights = get_attention_weights(
             task.model,
