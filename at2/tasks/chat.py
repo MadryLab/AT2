@@ -21,6 +21,7 @@ class AttributionTaskWithChatPrompt(AttributionTask):
         )
         self.previous_messages = [] if previous_messages is None else previous_messages
         self.source_type = source_type
+        self._source_to_document = []
 
     @property
     @abstractmethod
@@ -65,18 +66,21 @@ class AttributionTaskWithChatPrompt(AttributionTask):
 
     def _get_source_token_ranges(self):
         source_token_ranges = []
-        for document_start, document_end in self.document_ranges:
+        self._source_to_document = []
+        for document_index, (document_start, document_end) in enumerate(self.document_ranges):
             if self.source_type == "document":
                 token_start, token_end = self.prompt_range_to_token_range(
                     document_start, document_end
                 )
                 source_token_ranges.append((token_start, token_end))
+                self._source_to_document.append(document_index)
             elif self.source_type == "token":
                 token_start, token_end = self.prompt_range_to_token_range(
                     document_start, document_end
                 )
                 for i in range(token_start, token_end):
                     source_token_ranges.append((i, i + 1))
+                    self._source_to_document.append(document_index)
             elif self.source_type == "word" or self.source_type == "sentence":
                 document = self.prompt[document_start:document_end]
                 _, _, indices = split_text(document, self.source_type)
@@ -85,6 +89,7 @@ class AttributionTaskWithChatPrompt(AttributionTask):
                         start + document_start, end + document_start
                     )
                     source_token_ranges.append((token_start, token_end))
+                    self._source_to_document.append(document_index)
             else:
                 raise ValueError(f"Invalid source_type: {self.source_type}")
         return source_token_ranges

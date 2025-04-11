@@ -24,8 +24,6 @@ See our [paper][paper_link] for more details!
 
 <img alt="AT2" src='assets/comparison.png' width='100%'/>
 
-<!-- In a context-based question answering setting, we attribute a statement in the generated response to individual tokens of the context. -->
-
 ## How does AT2 work?
 
 When we say that a language model *uses* a piece of information (or source), we mean that *removing* this source would affect its generation.
@@ -43,16 +41,9 @@ This process consists of the following steps:
 While steps (1) and (2) are expensive (in our experiments, the training dataset is a few thousand examples), performing attribution for *unseen* examples is cheap.
 We just need to apply the learned score estimator to the attention weights produced by the model during inference.
 
-<!-- While attention weights intuitively seem to describe how a model makes use of preceding information, they are known for being unreliable as explanations of model behavior.
-To address this issue, AT2 *learns* how to make use of attention weights for attribution.
-Specifically, it uses attention weights to directly predict the influence each piece of information has on a model's generation.
-In doing so, it provides reliable attributions using attention weights, which are cheap to obtain.
-See our [paper][paper_link] for more details. -->
-
 ## Getting started
 
 Let's walk through a simple example of using the `at2` package!
-For more, see our [tutorials](#tutorials) below!
 Install `at2` with `pip`:
 
 ```
@@ -121,7 +112,6 @@ Out[2]:
 ```
 
 <img alt="Example attribution" src='assets/getting_started_output.png' width='100%'/>
-
 
 ## Tutorials
 
