@@ -67,7 +67,9 @@ class AttributionTaskWithChatPrompt(AttributionTask):
     def _get_source_token_ranges(self):
         source_token_ranges = []
         self._source_to_document = []
-        for document_index, (document_start, document_end) in enumerate(self.document_ranges):
+        for document_index, (document_start, document_end) in enumerate(
+            self.document_ranges
+        ):
             if self.source_type == "document":
                 token_start, token_end = self.prompt_range_to_token_range(
                     document_start, document_end

@@ -4,7 +4,7 @@ starting from pre-computed hidden states.
 
 This module provides functions to compute attention weights from various transformer
 models (like Llama, Phi, Qwen, Gemma) and use them for attribution. We compute only
-the relevant attention weights (as specified by `attribution_start` and 
+the relevant attention weights (as specified by `attribution_start` and
 `attribution_end`) in order to be able to efficiently compute and store them. If we
 were to use `output_attentions=True` in the forward pass, we would (1) only be able
 to use the `eager` attention implementation, and (2) would need to store the entire
@@ -12,7 +12,7 @@ attention matrix which grows quadratically with the sequence length. Most of the
 logic here is replicated from the `transformers` library.
 
 If you'd like to perform attribution on a model that is not currently supported,
-you can add it yourself by modifying `infer_model_type` and 
+you can add it yourself by modifying `infer_model_type` and
 `get_layer_attention_weights`. Please see `tests/attribution/test_attention.py`
 to ensure that your implementation matches the expected attention weights when
 using the `output_attentions=True`.
@@ -22,6 +22,7 @@ import math
 from typing import Any, Optional
 import torch as ch
 import transformers.models
+
 
 def infer_model_type(model):
     model_type_to_keyword = {
@@ -107,7 +108,9 @@ def get_layer_attention_weights(
         key_states = self_attn.k_norm(key_states)
 
         if self_attn.is_sliding:
-            position_embeddings = model.model.rotary_emb_local(hidden_states, position_ids)
+            position_embeddings = model.model.rotary_emb_local(
+                hidden_states, position_ids
+            )
         else:
             position_embeddings = model.model.rotary_emb(hidden_states, position_ids)
     else:

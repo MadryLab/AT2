@@ -5,7 +5,11 @@ import nltk
 import numpy as np
 import torch as ch
 from spacy.lang.en import English
-from transformers import AutoModelForCausalLM, AutoTokenizer, AutoModelForImageTextToText
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    AutoModelForImageTextToText,
+)
 
 
 nltk.download("punkt_tab")

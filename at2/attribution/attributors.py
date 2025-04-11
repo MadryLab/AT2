@@ -38,7 +38,13 @@ class Attributor(ABC):
         """Get attribution scores for a given token range."""
 
     def get_attribution_scores(
-        self, start=None, end=None, token_start=None, token_end=None, verbose=False, **kwargs
+        self,
+        start=None,
+        end=None,
+        token_start=None,
+        token_end=None,
+        verbose=False,
+        **kwargs,
     ):
         """Get attribution scores for a given target range.
         The target range can be specified in terms of characters (`start` and `end`) or tokens (`token_start` and `token_end`).
