@@ -5,7 +5,7 @@ from datasets import load_dataset
 
 from at2.tasks.context_attribution import SimpleContextAttributionTask
 from at2.utils import get_model_and_tokenizer
-from at2 import AT2Trainer, AT2ScoreEstimator
+from at2 import AT2Trainer, AT2ScoreEstimator, AT2Attributor
 
 
 MODEL_NAME = "meta-llama/Llama-3.2-1B-Instruct"
@@ -81,6 +81,7 @@ def test_train(trainer: AT2Trainer):
 
 def test_load_from_checkpoint(trainer: AT2Trainer):
     test_train(trainer)
-    AT2ScoreEstimator.load(
-        trainer.save_path / "estimators" / "default" / "score_estimator.pt"
-    )
+    path = trainer.save_path / "estimators" / "default" / "score_estimator.pt"
+    AT2ScoreEstimator.load(path)
+    task = task_from_example(trainer.dataset[0], trainer.model, trainer.tokenizer)
+    AT2Attributor.from_path(task, path)

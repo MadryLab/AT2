@@ -178,7 +178,7 @@ class ScoreEstimationAttributor(Attributor):
 
     @classmethod
     def from_path(cls, task: AttributionTask, path: Path):
-        score_estimator = LinearScoreEstimator.load(path / "score_estimator.pt")
+        score_estimator = LinearScoreEstimator.load(path)
         return cls(task, score_estimator)
 
     @classmethod

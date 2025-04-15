@@ -25,7 +25,7 @@ MODEL_NAMES = [
 def models_and_tokenizers() -> Dict[str, Tuple[Any, Any]]:
     return {
         model_name: get_model_and_tokenizer(
-            model_name, dtype=ch.bfloat16, attn_implementation="eager"
+            model_name, attn_implementation="eager"
         )
         for model_name in MODEL_NAMES
     }
