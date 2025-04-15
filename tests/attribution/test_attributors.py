@@ -46,7 +46,7 @@ def is_multimodal(model_name):
     if "gemma-3-" in model_name.lower():
         params_start = model_name.lower().find("gemma-3-") + len("gemma-3-")
         params_end = model_name.lower().find("b-it", params_start)
-        params = model_name[params_start: params_end]
+        params = model_name[params_start:params_end]
         # Only gemma-3-1b-it is text-only, the rest are multimodal
         if params != "1":
             return True
@@ -60,7 +60,9 @@ def get_hub_name(model_name: str) -> str:
 @pytest.mark.parametrize("model_name", CONTEXT_MODEL_NAMES)
 def test_context_attributor_from_hub(model_name: str) -> None:
     model, tokenizer = get_model_and_tokenizer(
-        model_name, dtype=ch.bfloat16, is_multimodal=is_multimodal(model_name)
+        model_name,
+        torch_dtype=ch.bfloat16,
+        is_multimodal=is_multimodal(model_name),
     )
     task = get_context_task(model, tokenizer)
     hub_name = get_hub_name(model_name)
@@ -72,7 +74,9 @@ def test_context_attributor_from_hub(model_name: str) -> None:
 @pytest.mark.parametrize("model_name", THOUGHT_MODEL_NAMES)
 def test_thought_attributor_from_hub(model_name: str) -> None:
     model, tokenizer = get_model_and_tokenizer(
-        model_name, dtype=ch.bfloat16, is_multimodal=is_multimodal(model_name)
+        model_name,
+        torch_dtype=ch.bfloat16,
+        is_multimodal=is_multimodal(model_name),
     )
     task = get_thought_task(model, tokenizer)
     hub_name = get_hub_name(model_name)

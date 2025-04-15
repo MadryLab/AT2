@@ -16,10 +16,10 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-dependencies = ["numpy", "torch", "pandas", "nltk >= 3.8.2", "spacy", "scikit-learn", "tqdm", "transformers", "datasets", "huggingface-hub"]
+dependencies = ["numpy", "torch", "pandas", "nltk >= 3.8.2", "spacy", "scikit-learn", "matplotlib", "tqdm", "ipywidgets", "transformers", "datasets", "huggingface-hub"]
 
 [project.optional-dependencies]
-optional = ["flash-attn"]
+optional = ["flash-attn", "accelerate"]
 test = ["pytest"]
 
 

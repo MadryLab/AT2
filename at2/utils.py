@@ -1,5 +1,5 @@
 import string
-from typing import List, Tuple, Optional, Any, Dict
+from typing import List, Tuple, Optional, Any, Union
 from pathlib import Path
 import nltk
 import numpy as np
@@ -17,17 +17,19 @@ nltk.download("punkt_tab")
 
 def get_model_and_tokenizer(
     model_name: str,
-    dtype: ch.dtype = ch.bfloat16,
+    torch_dtype: ch.dtype = ch.bfloat16,
+    device: Optional[Union[str, ch.device]] = "cuda:0",
     attn_implementation: Optional[str] = None,
     is_multimodal: bool = False,
+    **kwargs: Any,
 ) -> Tuple[Any, Any]:
     if is_multimodal:
         model = AutoModelForImageTextToText.from_pretrained(
             model_name,
-            torch_dtype=dtype,
+            torch_dtype=torch_dtype,
             attn_implementation=attn_implementation,
-            device_map="auto",
             trust_remote_code=True,
+            **kwargs,
         )
         model.language_model.name_or_path = model.name_or_path
         model.language_model.generation_config = model.generation_config
@@ -35,13 +37,17 @@ def get_model_and_tokenizer(
     else:
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
-            torch_dtype=dtype,
+            torch_dtype=torch_dtype,
             attn_implementation=attn_implementation,
-            device_map="auto",
             trust_remote_code=True,
+            **kwargs,
         )
+    if device is not None:
+        model.to(device)
     tokenizer = AutoTokenizer.from_pretrained(
-        model_name, padding_side="left", trust_remote_code=True
+        model_name,
+        padding_side="left",
+        trust_remote_code=True,
     )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token

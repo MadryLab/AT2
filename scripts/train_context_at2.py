@@ -43,7 +43,7 @@ def main(
     attn_implementation = "flash_attention_2"
     model, tokenizer = get_model_and_tokenizer(
         model_name,
-        dtype=dtype,
+        torch_dtype=dtype,
         attn_implementation=attn_implementation,
         is_multimodal=is_multimodal(model_name),
     )
