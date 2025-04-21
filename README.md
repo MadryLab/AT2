@@ -1,15 +1,15 @@
 # AT2: Learning to Attribute with Attention
 
-[paper_link]: TODO
-[demo_link]: TODO
+[paper_link]: https://arxiv.org/abs/2504.13752
+<!-- [demo_link]: TODO -->
 
 <p align='center'>
     <img alt="AT2" src='assets/logo.png' width='30%'/>
     <br>
     [<a href="#getting-started">getting started</a>]
     [<a href="#tutorials">tutorials</a>]
-    [<a href="TODO">paper</a>]
-    [<a href="TODO">demo</a>]
+    [<a href="https://arxiv.org/abs/2504.13752">paper</a>]
+    <!-- [<a href="TODO">demo</a>] -->
     [<a href="#citation">bib</a>]
     <br>
     Maintained by <a href="https://twitter.com/bcohenwang">Ben Cohen-Wang</a>
@@ -128,12 +128,17 @@ AT2 *learns* to attribute a particular model's generation to preceding tokens.
 We provide learned score estimators for a few popular models in [this HuggingFace collection](https://huggingface.co/collections/madrylab/at2-67f28846e63e1832cb208427).
 These estimators were trained using the training scripts in `scripts`.
 
-## Building a citation tool with AT2
+<!-- ## Building a citation tool with AT2
 
 In our previous work, we explored *context attribution*: the specific task of attributing a model's generation to a provided context.
-These attributions can be interpreted as *citations* for a generated statement (see [ContextCite](https://github.com/MadryLab/context-cite)).
+These attributions can be interpreted as *citations* for a generated statement (see [ContextCite](https://github.com/MadryLab/context-cite)). -->
 
 ## Citation
 ```bib
-TODO
+@article{cohenwang2025learning,
+  title={Learning to Attribute with Attention},
+  author={Cohen-Wang, Benjamin and Chuang, Yung-Sung and Madry, Aleksander},
+  journal={arXiv preprint arXiv:2504.13752},
+  year={2025}
+}
 ```
