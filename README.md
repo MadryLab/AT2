@@ -1,15 +1,16 @@
 # AT2: Learning to Attribute with Attention
 
 [paper_link]: https://arxiv.org/abs/2504.13752
-<!-- [demo_link]: TODO -->
+[demo_link]: https://github.com/MadryLab/search-with-at2-citations/tree/main
+[live_demo_link]: https://bencw99.github.io/at2-citations
 
 <p align='center'>
-    <img alt="AT2" src='assets/logo.png' width='30%'/>
+    <img alt="AT2" src='https://raw.githubusercontent.com/MadryLab/AT2/main/assets/logo.png' width='30%'/>
     <br>
     [<a href="#getting-started">getting started</a>]
     [<a href="#tutorials">tutorials</a>]
     [<a href="https://arxiv.org/abs/2504.13752">paper</a>]
-    <!-- [<a href="TODO">demo</a>] -->
+    [<a href="https://bencw99.github.io/at2-citations">demo</a>]
     [<a href="#citation">bib</a>]
     <br>
     Maintained by <a href="https://twitter.com/bcohenwang">Ben Cohen-Wang</a>
@@ -22,7 +23,7 @@ For each piece of information (or *source*), AT2 assigns a score indicating the 
 AT2 significantly outperforms naïve methods for leveraging attention for attribution and performs comparably to much more expensive approaches.
 See our [paper][paper_link] for more details!
 
-<img alt="AT2" src='assets/comparison.png' width='100%'/>
+<img alt="AT2" src='https://raw.githubusercontent.com/MadryLab/AT2/main/assets/comparison.png' width='100%'/>
 
 ## How does AT2 work?
 
@@ -111,7 +112,7 @@ In [2]: attributor.show_attribution()
 Out[2]:
 ```
 
-<img alt="Example attribution" src='assets/getting_started_output.png' width='100%'/>
+<img alt="Example attribution" src='https://raw.githubusercontent.com/MadryLab/AT2/main/assets/getting_started_output.png' width='100%'/>
 
 ## Tutorials
 
@@ -128,10 +129,11 @@ AT2 *learns* to attribute a particular model's generation to preceding tokens.
 We provide learned score estimators for a few popular models in [this HuggingFace collection](https://huggingface.co/collections/madrylab/at2-67f28846e63e1832cb208427).
 These estimators were trained using the training scripts in `scripts`.
 
-<!-- ## Building a citation tool with AT2
+## Building a citation tool with AT2
 
 In our previous work, we explored *context attribution*: the specific task of attributing a model's generation to a provided context.
-These attributions can be interpreted as *citations* for a generated statement (see [ContextCite](https://github.com/MadryLab/context-cite)). -->
+These attributions can be interpreted as *citations* for a generated statement (see [ContextCite](https://github.com/MadryLab/context-cite)).
+When leveraging AT2 for attribution, producing these citations can be done efficiently--to showcase this, we created an LLM-powered search tool with citations provided by AT2 [here][demo_link] with a temporary demo [here][live_demo_link].
 
 ## Citation
 ```bib
